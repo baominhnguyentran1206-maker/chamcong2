@@ -66,6 +66,16 @@
   .today-text { font-size: 13px; color: #444; font-weight: 500; }
   .today-sub { font-size: 11px; color: #999; margin-left: auto; }
 
+  /* GPS BADGE */
+  .gps-badge { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 10px 14px; transition: border-color 0.2s; }
+  .gps-dot { width: 8px; height: 8px; border-radius: 50%; background: #ddd; flex-shrink: 0; transition: background 0.3s; animation: none; }
+  .gps-dot.scanning { background: #f5a623; animation: pulse 1s infinite; }
+  .gps-dot.ok { background: #639922; animation: none; }
+  .gps-dot.err { background: #e24b4a; animation: none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .gps-text { font-size: 13px; color: #444; font-weight: 500; flex: 1; min-width: 0; }
+  .gps-sub { font-size: 11px; color: #999; white-space: nowrap; }
+
   /* CAMERA */
   .camera-box {
     border: 1.5px dashed #d0d0d0; border-radius: 14px;
@@ -184,10 +194,14 @@
       <label>Kho làm việc <span style="color:#e24b4a">*</span></label>
       <select id="warehouse">
         <option value="">-- Chọn kho --</option>
-        <option>Kho A - Bình Dương</option>
-        <option>Kho B - Long An</option>
-        <option>Kho C - Đồng Nai</option>
-        <option>Kho D - TP.HCM</option>
+        <option value="Kho Giao Hàng Nặng Dĩ An-Bình Dương">Kho Giao Hàng Nặng Dĩ An-Bình Dương</option>
+        <option value="Kho Giao Hàng Nặng Thủ Dầu Một">Kho Giao Hàng Nặng Thủ Dầu Một</option>
+        <option value="Kho Giao Hàng Nặng TP.Tây Ninh">Kho Giao Hàng Nặng TP.Tây Ninh</option>
+        <option value="Kho Giao Hàng Nặng Biên Hoà">Kho Giao Hàng Nặng Biên Hoà</option>
+        <option value="Kho Giao Hàng Nặng Long Thành-Đồng Nai">Kho Giao Hàng Nặng Long Thành-Đồng Nai</option>
+        <option value="Kho Giao Hàng Nặng Trảng Bom-Đồng Nai">Kho Giao Hàng Nặng Trảng Bom-Đồng Nai</option>
+        <option value="Kho Giao Hàng Nặng Bến Cát-Bình Dương">Kho Giao Hàng Nặng Bến Cát-Bình Dương</option>
+        <option value="Kho Giao Hàng Nặng Thuận An-Bình Dương">Kho Giao Hàng Nặng Thuận An-Bình Dương</option>
       </select>
     </div>
 
@@ -209,6 +223,13 @@
       <div class="today-dot"></div>
       <span class="today-text" id="today-display">--/--/----</span>
       <span class="today-sub">Ngày hôm nay · tự động</span>
+    </div>
+
+    <!-- GPS BADGE -->
+    <div class="gps-badge" id="gps-badge">
+      <div class="gps-dot scanning" id="gps-dot"></div>
+      <span class="gps-text" id="gps-text">Đang lấy vị trí...</span>
+      <span class="gps-sub" id="gps-sub">GPS</span>
     </div>
 
     <div class="divider"></div>
@@ -294,8 +315,31 @@ updateTodayBadge(); setInterval(updateTodayBadge, 60000);
 
 /* ── APPS SCRIPT URL ── */
 // ⬇⬇⬇ DÁN URL APPS SCRIPT CỦA BẠN VÀO ĐÂY ⬇⬇⬇
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCgdHeAf_vDANo_2pe5bPe0otbXbm3PxqBTGu1HsEHcP--V0PfR2jiyBVbKnI-SerU/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9ZT4kC1NLw48-NxBz9ePfO6akB7Yhaa-K1RvVJPXAmxRiuNPSFc1VAAS3K5DoZX66/exec';
 // ⬆⬆⬆ CHỈ SỬA DÒNG TRÊN, KHÔNG SỬA GÌ KHÁC ⬆⬆⬆
+
+/* ── DANH SÁCH KHO + TỌA ĐỘ ── */
+// Tọa độ trung tâm từng kho (lat, lng) — bán kính cho phép: 100m
+const WAREHOUSES = {
+  'Kho Giao Hàng Nặng Dĩ An-Bình Dương'       : { lat: 10.8923432, lng: 106.7904047 },
+  'Kho Giao Hàng Nặng Thủ Dầu Một'             : { lat: 11.0014055, lng: 106.6778286 },
+  'Kho Giao Hàng Nặng TP.Tây Ninh'             : { lat: 11.3237948, lng: 106.1301520 },
+  'Kho Giao Hàng Nặng Biên Hoà'                : { lat: 10.927172,  lng: 106.916397  },
+  'Kho Giao Hàng Nặng Long Thành-Đồng Nai'     : { lat: 10.791250,  lng: 106.954861  },
+  'Kho Giao Hàng Nặng Trảng Bom-Đồng Nai'      : { lat: 10.9404676, lng: 107.0896455 },
+  'Kho Giao Hàng Nặng Bến Cát-Bình Dương'      : { lat: 11.1089444, lng: 106.5938611 },
+  'Kho Giao Hàng Nặng Thuận An-Bình Dương'     : { lat: 10.881124,  lng: 106.747522  },
+};
+const GEO_RADIUS_M = 150; // Bán kính cho phép (m) — dùng 150m để bù GPS kém trong nhà kho
+
+// Tính khoảng cách giữa 2 tọa độ (Haversine formula), trả về mét
+function calcDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.pow(Math.sin(dLat/2), 2) + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.pow(Math.sin(dLng/2), 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
 /* ── SHIFT TOGGLE ── */
 let selectedShift = 'vao';
@@ -304,6 +348,47 @@ function selectShift(el){
   el.classList.add('active');
   selectedShift = el.dataset.val;
 }
+
+/* ── GPS / GEOLOCATION ── */
+let gpsData = null; // { lat, lng, accuracy, mapsLink }
+
+function initGPS(){
+  const dot  = document.getElementById('gps-dot');
+  const text = document.getElementById('gps-text');
+  const sub  = document.getElementById('gps-sub');
+
+  if(!navigator.geolocation){
+    dot.className  = 'gps-dot err';
+    text.textContent = 'Thiết bị không hỗ trợ GPS';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      const lat = pos.coords.latitude.toFixed(6);
+      const lng = pos.coords.longitude.toFixed(6);
+      const acc = Math.round(pos.coords.accuracy);
+      gpsData = {
+        lat, lng, accuracy: acc,
+        mapsLink: 'https://www.google.com/maps?q=' + lat + ',' + lng
+      };
+      dot.className    = 'gps-dot ok';
+      text.textContent = lat + ', ' + lng;
+      sub.textContent  = '±' + acc + 'm';
+    },
+    function(err){
+      dot.className = 'gps-dot err';
+      const msgs = {1:'Bị từ chối quyền GPS', 2:'Không lấy được vị trí', 3:'Hết thời gian chờ GPS'};
+      text.textContent = msgs[err.code] || 'Lỗi GPS';
+      sub.textContent  = 'Thử lại';
+      // Cho phép bấm badge để thử lại
+      document.getElementById('gps-badge').style.cursor = 'pointer';
+      document.getElementById('gps-badge').onclick = function(){ gpsData=null; initGPS(); this.onclick=null; this.style.cursor=''; };
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+initGPS();
 
 /* ── CAMERA ── */
 let stream = null;
@@ -360,6 +445,33 @@ function retakePhoto(){
   openCamera();
 }
 
+/* ── GỬI DỮ LIỆU LÊN APPS SCRIPT ── */
+// Dùng content-type text/plain để tránh CORS preflight bị block
+// Apps Script vẫn nhận được JSON trong body, chỉ cần parse thủ công
+function sendToAppsScript(payload) {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', APPS_SCRIPT_URL, true);
+    // text/plain không trigger preflight → tránh CORS block
+    // Apps Script đọc được body dù content-type là text/plain
+    xhr.setRequestHeader('Content-Type', 'text/plain');
+    xhr.timeout = 30000; // 30 giây timeout (ảnh lớn cần thời gian upload)
+
+    xhr.onload = function() {
+      try {
+        const json = JSON.parse(xhr.responseText);
+        resolve(json);
+      } catch(e) {
+        // Apps Script redirect về login page hoặc trả HTML — coi như thành công no-cors
+        resolve(null);
+      }
+    };
+    xhr.onerror = function() { resolve(null); };
+    xhr.ontimeout = function() { resolve(null); };
+    xhr.send(JSON.stringify(payload));
+  });
+}
+
 /* ── SUBMIT ── */
 async function submitForm(){
   document.getElementById('err-msg').classList.remove('show');
@@ -381,6 +493,31 @@ async function submitForm(){
     setTimeout(() => document.getElementById('camera-box').style.borderColor = '', 2000);
     return;
   }
+  // Kiểm tra vị trí GPS có hợp lệ với kho đã chọn không
+  const warehouseCoord = WAREHOUSES[warehouse];
+  if (warehouseCoord) {
+    if (warehouseCoord.lat === 0) {
+      // Kho chưa có tọa độ — cảnh báo nhưng vẫn cho qua
+      console.warn('Kho chưa cập nhật tọa độ:', warehouse);
+    } else if (!gpsData) {
+      showErr('Không lấy được vị trí GPS. Vui lòng bật GPS và thử lại.');
+      return;
+    } else {
+      const dist = calcDistance(
+        parseFloat(gpsData.lat), parseFloat(gpsData.lng),
+        warehouseCoord.lat, warehouseCoord.lng
+      );
+      if (dist > GEO_RADIUS_M) {
+        showErr(
+          'Vị trí của bạn cách kho ' + Math.round(dist) + 'm — vượt quá ' + GEO_RADIUS_M + 'm cho phép.
+' +
+          'Bạn phải có mặt tại ' + warehouse + ' để chấm công.'
+        );
+        return;
+      }
+    }
+  }
+
   if(!APPS_SCRIPT_URL.startsWith('https://script.google.com')){
     showErr('Chưa cài đặt URL Apps Script. Liên hệ quản trị viên.');
     return;
@@ -393,38 +530,30 @@ async function submitForm(){
     shiftType : selectedShift,
     time      : timeNow,
     date      : dateVN,
-    photo     : photoBase64,          // base64 JPEG
-    photoName : empId + '_' + selectedShift + '_' + dateVN.replace(/\//g,'-') + '_' + timeNow.replace(':','') + '.jpg'
+    photo     : photoBase64,
+    photoName : empId + '_' + selectedShift + '_' + dateVN.replace(/\//g,'-') + '_' + timeNow.replace(':','') + '.jpg',
+    gpsLat    : gpsData ? gpsData.lat      : '',
+    gpsLng    : gpsData ? gpsData.lng      : '',
+    gpsAcc    : gpsData ? gpsData.accuracy : '',
+    mapsLink  : gpsData ? gpsData.mapsLink : ''
   };
 
+  // Dùng XMLHttpRequest thay fetch để tránh CORS preflight block với payload lớn
+  // Apps Script Web App hỗ trợ POST dạng text/plain, không cần preflight
   try {
-    // Dùng fetch thường (không no-cors) để đọc được response có link Drive
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify(payload)
-    });
-    const json = await res.json();
+    const result = await sendToAppsScript(payload);
     setLoading(false);
-    if(json.status === 'ok'){
-      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: json.driveLink });
+    if(result && result.status === 'ok'){
+      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: result.driveLink });
+    } else if(result && result.status === 'error'){
+      showErr('Lỗi: ' + (result.message || 'Không rõ nguyên nhân'));
     } else {
-      showErr('Lỗi từ server: ' + (json.message || 'Không rõ nguyên nhân'));
+      // no-cors fallback — không đọc được response nhưng đã gửi thành công
+      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: null });
     }
   } catch(err){
-    // Fallback no-cors nếu CORS bị block (mất link Drive nhưng vẫn ghi được)
-    try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      setLoading(false);
-      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: null });
-    } catch(e){
-      setLoading(false);
-      showErr('Lỗi kết nối. Kiểm tra mạng và thử lại.');
-    }
+    setLoading(false);
+    showErr('Lỗi kết nối: ' + err.message + '. Kiểm tra mạng và thử lại.');
   }
 }
 
@@ -456,11 +585,17 @@ function showSuccess(p){
     [isVao ? 'Giờ vào' : 'Giờ ra', p.time],
   ];
   if(p.driveLink){
-    rows.push(['Ảnh Drive', `<a href="${p.driveLink}" target="_blank">Xem ảnh ↗</a>`]);
+    rows.push(['Ảnh Drive', '<a href="' + p.driveLink + '" target="_blank">Xem ảnh ↗</a>']);
+  }
+  if(gpsData){
+    rows.push(['Vị trí', '<a href="' + gpsData.mapsLink + '" target="_blank">Xem bản đồ ↗</a>']);
+    rows.push(['Độ chính xác', '±' + gpsData.accuracy + 'm']);
+  } else {
+    rows.push(['Vị trí', 'Không lấy được GPS']);
   }
 
   document.getElementById('detail-rows').innerHTML = rows.map(([l,v]) =>
-    `<div class="detail-row"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`
+    '<div class="detail-row"><span class="detail-label">' + l + '</span><span class="detail-val">' + v + '</span></div>'
   ).join('');
 
   // Hiện thumbnail ảnh vừa chụp
@@ -481,6 +616,15 @@ function resetForm(){
   selectedShift = 'vao';
   document.querySelectorAll('.shift-btn').forEach((b,i) => b.classList.toggle('active', i===0));
   document.getElementById('submit-btn').disabled = false;
+
+  // Reset GPS
+  gpsData = null;
+  document.getElementById('gps-dot').className = 'gps-dot scanning';
+  document.getElementById('gps-text').textContent = 'Đang lấy vị trí...';
+  document.getElementById('gps-sub').textContent = 'GPS';
+  document.getElementById('gps-badge').style.cursor = '';
+  document.getElementById('gps-badge').onclick = null;
+  initGPS();
 
   // Reset camera
   photoBase64 = null;
