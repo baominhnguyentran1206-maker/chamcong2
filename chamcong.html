@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Chấm Công Kho</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f0f0f0;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0 0 2rem;
+  }
+  .app { width: 100%; max-width: 430px; }
+
+  /* HEADER */
+  .header { background: #1a1a2e; padding: 1.5rem 1.25rem 1.25rem; border-radius: 0 0 24px 24px; margin-bottom: 1.5rem; }
+  .header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+  .logo { width: 36px; height: 36px; background: #e8ff6b; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo svg { width: 20px; height: 20px; }
+  .brand-name { font-size: 18px; font-weight: 600; color: #fff; letter-spacing: -0.3px; }
+  .brand-ver { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
+  .time-display { display: flex; align-items: center; background: rgba(255,255,255,0.07); border-radius: 12px; padding: 10px 14px; gap: 10px; }
+  .clock { font-size: 28px; font-weight: 600; color: #e8ff6b; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+  .date-info { margin-left: auto; text-align: right; }
+  .date-day { font-size: 13px; color: rgba(255,255,255,0.9); font-weight: 500; }
+  .date-full { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+  /* FORM */
+  .form-wrap { padding: 0 1rem; display: flex; flex-direction: column; gap: 12px; }
+  .section-title { font-size: 10px; font-weight: 600; color: #888; letter-spacing: 1px; text-transform: uppercase; margin-bottom: -4px; padding-left: 2px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; font-weight: 500; color: #444; }
+  .field input, .field select {
+    width: 100%; height: 48px; padding: 0 14px;
+    border: 1.5px solid #e0e0e0; border-radius: 12px;
+    font-size: 15px; background: #fff; color: #1a1a1a;
+    font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none; appearance: none;
+  }
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: #534AB7; box-shadow: 0 0 0 3px rgba(83,74,183,0.12); }
+
+  /* SHIFT TOGGLE */
+  .shift-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .shift-btn {
+    padding: 14px 8px; border: 1.5px solid #e0e0e0; border-radius: 12px;
+    background: #fff; font-size: 15px; font-weight: 500; color: #666;
+    cursor: pointer; text-align: center; transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent; line-height: 1.4;
+  }
+  .shift-btn .shift-label { font-size: 12px; color: #aaa; display: block; margin-top: 2px; font-weight: 400; }
+  .shift-btn.active { background: #1a1a2e; color: #e8ff6b; border-color: #1a1a2e; }
+  .shift-btn.active .shift-label { color: rgba(232,255,107,0.6); }
+  .shift-btn:active { transform: scale(0.97); }
+
+  /* TODAY BADGE */
+  .today-badge { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 10px 14px; }
+  .today-dot { width: 8px; height: 8px; border-radius: 50%; background: #639922; flex-shrink: 0; }
+  .today-text { font-size: 13px; color: #444; font-weight: 500; }
+  .today-sub { font-size: 11px; color: #999; margin-left: auto; }
+
+  /* CAMERA */
+  .camera-box {
+    border: 1.5px dashed #d0d0d0; border-radius: 14px;
+    background: #fafafa; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center;
+    position: relative; min-height: 200px; justify-content: center;
+    transition: border-color 0.2s;
+  }
+  .camera-box.has-preview { border-style: solid; border-color: #639922; background: #000; }
+  .camera-placeholder { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 2rem; }
+  .camera-placeholder svg { opacity: 0.3; }
+  .camera-placeholder-text { font-size: 13px; color: #aaa; text-align: center; line-height: 1.5; }
+  #video-preview { width: 100%; display: none; border-radius: 12px; }
+  #photo-preview { width: 100%; display: none; border-radius: 12px; }
+  .camera-controls { display: flex; gap: 8px; padding: 8px; width: 100%; }
+  .cam-btn {
+    flex: 1; height: 42px; border: none; border-radius: 10px;
+    font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .cam-btn:active { transform: scale(0.97); }
+  .cam-btn-open { background: #1a1a2e; color: #e8ff6b; }
+  .cam-btn-snap { background: #534AB7; color: #fff; }
+  .cam-btn-retake { background: #f0f0f0; color: #555; }
+  .cam-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .photo-ok-badge {
+    position: absolute; top: 10px; right: 10px;
+    background: #639922; color: #fff; border-radius: 20px;
+    padding: 4px 10px; font-size: 11px; font-weight: 600;
+    display: none;
+  }
+  .photo-ok-badge.show { display: block; }
+  .photo-required-note { font-size: 11px; color: #e24b4a; padding-left: 2px; }
+
+  /* DIVIDER */
+  .divider { height: 1px; background: #e8e8e8; margin: 4px 0; }
+
+  /* SUBMIT */
+  .submit-btn {
+    width: 100%; height: 52px; background: #1a1a2e; color: #e8ff6b;
+    border: none; border-radius: 14px; font-size: 16px; font-weight: 600;
+    cursor: pointer; font-family: inherit; letter-spacing: -0.2px;
+    transition: opacity 0.15s, transform 0.1s; margin-top: 4px;
+  }
+  .submit-btn:active { transform: scale(0.98); opacity: 0.9; }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ERROR / LOADING */
+  .error-msg { font-size: 13px; color: #a32d2d; background: #fcebeb; border-radius: 10px; padding: 10px 14px; display: none; line-height: 1.5; }
+  .error-msg.show { display: block; }
+  .loading-row { display: none; align-items: center; justify-content: center; gap: 10px; font-size: 14px; color: #666; padding: 8px; flex-direction: column; }
+  .loading-row.show { display: flex; }
+  .loading-sub { font-size: 12px; color: #aaa; }
+  .spinner { width: 18px; height: 18px; border: 2px solid #ddd; border-top-color: #534AB7; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* SUCCESS */
+  .success-screen { display: none; flex-direction: column; gap: 10px; padding: 0 1rem; }
+  .success-screen.show { display: flex; }
+  .success-card { background: #fff; border-radius: 16px; border: 1.5px solid #c0dd97; overflow: hidden; }
+  .success-header { background: #eaf3de; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 12px; }
+  .success-icon { width: 40px; height: 40px; background: #639922; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .success-title { font-size: 15px; font-weight: 600; color: #27500A; }
+  .success-sub { font-size: 12px; color: #3b6d11; margin-top: 2px; }
+  .detail-rows { padding: 0.75rem 1.25rem; }
+  .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { color: #888; }
+  .detail-val { font-weight: 500; color: #1a1a1a; text-align: right; max-width: 65%; }
+  .detail-val a { color: #534AB7; text-decoration: none; font-size: 13px; }
+  .success-photo { width: 100%; border-radius: 0 0 14px 14px; display: none; max-height: 180px; object-fit: cover; }
+  .success-photo.show { display: block; }
+  .reset-btn { width: 100%; height: 48px; background: transparent; border: 1.5px solid #c0dd97; border-radius: 14px; color: #3b6d11; font-size: 15px; font-weight: 500; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+  .reset-btn:active { background: #eaf3de; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">
+        <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#1a1a2e" stroke-width="2"/><path d="M10 5.5v5l3 3" stroke="#1a1a2e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">Chấm Công Kho</div>
+        <div class="brand-ver">Timekeeper v1.0</div>
+      </div>
+    </div>
+    <div class="time-display">
+      <div class="clock" id="clock">00:00:00</div>
+      <div class="date-info">
+        <div class="date-day" id="weekday">--</div>
+        <div class="date-full" id="date-full">-- / -- / ----</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN FORM -->
+  <div class="form-wrap" id="main-form">
+
+    <div class="section-title">Thông tin nhân viên</div>
+
+    <div class="field">
+      <label>Họ và tên <span style="color:#e24b4a">*</span></label>
+      <input type="text" id="name" placeholder="Nguyễn Văn A" autocomplete="name" />
+    </div>
+
+    <div class="field">
+      <label>Mã nhân viên (ID) <span style="color:#e24b4a">*</span></label>
+      <input type="text" id="emp-id" placeholder="NV001" autocomplete="off" />
+    </div>
+
+    <div class="field">
+      <label>Kho làm việc <span style="color:#e24b4a">*</span></label>
+      <select id="warehouse">
+        <option value="">-- Chọn kho --</option>
+        <option>Kho A - Bình Dương</option>
+        <option>Kho B - Long An</option>
+        <option>Kho C - Đồng Nai</option>
+        <option>Kho D - TP.HCM</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-title">Loại chấm công</div>
+
+    <div class="shift-grid">
+      <div class="shift-btn active" data-val="vao" onclick="selectShift(this)">
+        ▶ Vào ca
+        <span class="shift-label">Ghi giờ vào</span>
+      </div>
+      <div class="shift-btn" data-val="ra" onclick="selectShift(this)">
+        ◀ Ra ca
+        <span class="shift-label">Ghi giờ ra</span>
+      </div>
+    </div>
+
+    <div class="today-badge">
+      <div class="today-dot"></div>
+      <span class="today-text" id="today-display">--/--/----</span>
+      <span class="today-sub">Ngày hôm nay · tự động</span>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-title">Ảnh xác nhận <span class="photo-required-note">* bắt buộc</span></div>
+
+    <!-- CAMERA BOX -->
+    <div class="field">
+      <div class="camera-box" id="camera-box">
+        <div class="camera-placeholder" id="cam-placeholder">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <rect x="4" y="10" width="32" height="24" rx="4" stroke="#999" stroke-width="2"/>
+            <circle cx="20" cy="22" r="6" stroke="#999" stroke-width="2"/>
+            <path d="M15 10l2-4h6l2 4" stroke="#999" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <div class="camera-placeholder-text">Chụp ảnh xác nhận<br>vào / ra ca</div>
+        </div>
+        <video id="video-preview" autoplay playsinline muted></video>
+        <canvas id="snap-canvas" style="display:none;"></canvas>
+        <img id="photo-preview" alt="Ảnh chấm công" />
+        <div class="photo-ok-badge" id="photo-ok-badge">✓ Đã chụp</div>
+      </div>
+
+      <div class="camera-controls" id="camera-controls">
+        <button class="cam-btn cam-btn-open" id="btn-open-cam" onclick="openCamera()">📷 Mở camera</button>
+        <button class="cam-btn cam-btn-snap" id="btn-snap" onclick="takePhoto()" style="display:none;">⊙ Chụp ảnh</button>
+        <button class="cam-btn cam-btn-retake" id="btn-retake" onclick="retakePhoto()" style="display:none;">↺ Chụp lại</button>
+      </div>
+    </div>
+
+    <div class="error-msg" id="err-msg"></div>
+    <div class="loading-row" id="loading">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="spinner"></div>
+        <span id="loading-text">Đang tải ảnh lên Drive...</span>
+      </div>
+      <div class="loading-sub" id="loading-sub">Vui lòng không tắt trang</div>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitForm()">
+      Nộp chấm công ✓
+    </button>
+  </div>
+
+  <!-- SUCCESS SCREEN -->
+  <div class="success-screen" id="success-screen">
+    <div class="success-card">
+      <div class="success-header">
+        <div class="success-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10l5 5 8-8" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div class="success-title" id="success-title">Chấm công thành công!</div>
+          <div class="success-sub" id="success-sub">Dữ liệu đã ghi vào Google Sheets</div>
+        </div>
+      </div>
+      <div class="detail-rows" id="detail-rows"></div>
+      <img class="success-photo" id="success-photo" alt="Ảnh chấm công" />
+    </div>
+    <button class="reset-btn" onclick="resetForm()">+ Chấm công lần khác</button>
+  </div>
+
+</div>
+
+<script>
+/* ── CLOCK ── */
+function pad(n){ return String(n).padStart(2,'0'); }
+const DAYS = ['Chủ nhật','Thứ hai','Thứ ba','Thứ tư','Thứ năm','Thứ sáu','Thứ bảy'];
+function updateClock(){
+  const n = new Date();
+  document.getElementById('clock').textContent = pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());
+  document.getElementById('weekday').textContent = DAYS[n.getDay()];
+  document.getElementById('date-full').textContent = pad(n.getDate())+' / '+pad(n.getMonth()+1)+' / '+n.getFullYear();
+}
+updateClock(); setInterval(updateClock, 1000);
+
+/* ── TODAY ── */
+function getTodayVN(){
+  const n = new Date();
+  return pad(n.getDate())+'/'+pad(n.getMonth()+1)+'/'+n.getFullYear();
+}
+function updateTodayBadge(){ document.getElementById('today-display').textContent = getTodayVN(); }
+updateTodayBadge(); setInterval(updateTodayBadge, 60000);
+
+/* ── APPS SCRIPT URL ── */
+// ⬇⬇⬇ DÁN URL APPS SCRIPT CỦA BẠN VÀO ĐÂY ⬇⬇⬇
+const APPS_SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_URL_HERE';
+// ⬆⬆⬆ CHỈ SỬA DÒNG TRÊN, KHÔNG SỬA GÌ KHÁC ⬆⬆⬆
+
+/* ── SHIFT TOGGLE ── */
+let selectedShift = 'vao';
+function selectShift(el){
+  document.querySelectorAll('.shift-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  selectedShift = el.dataset.val;
+}
+
+/* ── CAMERA ── */
+let stream = null;
+let photoBase64 = null;
+
+async function openCamera(){
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
+    const video = document.getElementById('video-preview');
+    video.srcObject = stream;
+    video.style.display = 'block';
+    document.getElementById('cam-placeholder').style.display = 'none';
+    document.getElementById('btn-open-cam').style.display = 'none';
+    document.getElementById('btn-snap').style.display = '';
+    document.getElementById('camera-box').classList.add('has-preview');
+  } catch(err) {
+    showErr('Không thể mở camera: ' + (err.message || err) + '. Hãy cho phép truy cập camera và thử lại.');
+  }
+}
+
+function takePhoto(){
+  const video = document.getElementById('video-preview');
+  const canvas = document.getElementById('snap-canvas');
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  // Nén ảnh xuống quality 0.7 để giảm dung lượng gửi lên
+  photoBase64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+
+  // Hiện preview ảnh
+  const img = document.getElementById('photo-preview');
+  img.src = 'data:image/jpeg;base64,' + photoBase64;
+  img.style.display = 'block';
+  video.style.display = 'none';
+
+  // Dừng stream camera
+  if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+
+  document.getElementById('btn-snap').style.display = 'none';
+  document.getElementById('btn-retake').style.display = '';
+  document.getElementById('photo-ok-badge').classList.add('show');
+}
+
+function retakePhoto(){
+  photoBase64 = null;
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('photo-preview').src = '';
+  document.getElementById('photo-ok-badge').classList.remove('show');
+  document.getElementById('btn-retake').style.display = 'none';
+  openCamera();
+}
+
+/* ── SUBMIT ── */
+async function submitForm(){
+  document.getElementById('err-msg').classList.remove('show');
+
+  const name      = document.getElementById('name').value.trim();
+  const empId     = document.getElementById('emp-id').value.trim();
+  const warehouse = document.getElementById('warehouse').value;
+  const now       = new Date();
+  const timeNow   = pad(now.getHours())+':'+pad(now.getMinutes());
+  const dateVN    = getTodayVN();
+
+  if(!name || !empId || !warehouse){
+    showErr('Vui lòng điền đầy đủ: Họ tên, Mã NV và Kho làm việc.');
+    return;
+  }
+  if(!photoBase64){
+    showErr('Vui lòng chụp ảnh xác nhận trước khi nộp chấm công.');
+    document.getElementById('camera-box').style.borderColor = '#e24b4a';
+    setTimeout(() => document.getElementById('camera-box').style.borderColor = '', 2000);
+    return;
+  }
+  if(!APPS_SCRIPT_URL.startsWith('https://script.google.com')){
+    showErr('Chưa cài đặt URL Apps Script. Liên hệ quản trị viên.');
+    return;
+  }
+
+  setLoading(true, 'Đang tải ảnh lên Drive...');
+
+  const payload = {
+    name, empId, warehouse,
+    shiftType : selectedShift,
+    time      : timeNow,
+    date      : dateVN,
+    photo     : photoBase64,          // base64 JPEG
+    photoName : empId + '_' + selectedShift + '_' + dateVN.replace(/\//g,'-') + '_' + timeNow.replace(':','') + '.jpg'
+  };
+
+  try {
+    // Dùng fetch thường (không no-cors) để đọc được response có link Drive
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify(payload)
+    });
+    const json = await res.json();
+    setLoading(false);
+    if(json.status === 'ok'){
+      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: json.driveLink });
+    } else {
+      showErr('Lỗi từ server: ' + (json.message || 'Không rõ nguyên nhân'));
+    }
+  } catch(err){
+    // Fallback no-cors nếu CORS bị block (mất link Drive nhưng vẫn ghi được)
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      setLoading(false);
+      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: null });
+    } catch(e){
+      setLoading(false);
+      showErr('Lỗi kết nối. Kiểm tra mạng và thử lại.');
+    }
+  }
+}
+
+function setLoading(on, msg){
+  document.getElementById('loading').classList.toggle('show', on);
+  document.getElementById('submit-btn').disabled = on;
+  if(msg) document.getElementById('loading-text').textContent = msg;
+}
+
+function showErr(msg){
+  const el = document.getElementById('err-msg');
+  el.textContent = msg; el.classList.add('show');
+  setLoading(false);
+}
+
+function showSuccess(p){
+  setLoading(false);
+  document.getElementById('main-form').style.display = 'none';
+
+  const isVao = p.shiftType === 'vao';
+  document.getElementById('success-title').textContent = isVao ? '✓ Vào ca thành công!' : '✓ Ra ca thành công!';
+  document.getElementById('success-sub').textContent   = isVao ? 'Giờ vào & ảnh đã lưu vào Google Drive' : 'Giờ ra & ảnh đã lưu vào Google Drive';
+
+  const rows = [
+    ['Ngày',   p.date],
+    ['Tên NV', p.name],
+    ['Mã NV',  p.empId],
+    ['Kho',    p.warehouse],
+    [isVao ? 'Giờ vào' : 'Giờ ra', p.time],
+  ];
+  if(p.driveLink){
+    rows.push(['Ảnh Drive', `<a href="${p.driveLink}" target="_blank">Xem ảnh ↗</a>`]);
+  }
+
+  document.getElementById('detail-rows').innerHTML = rows.map(([l,v]) =>
+    `<div class="detail-row"><span class="detail-label">${l}</span><span class="detail-val">${v}</span></div>`
+  ).join('');
+
+  // Hiện thumbnail ảnh vừa chụp
+  if(photoBase64){
+    const img = document.getElementById('success-photo');
+    img.src = 'data:image/jpeg;base64,' + photoBase64;
+    img.classList.add('show');
+  }
+
+  document.getElementById('success-screen').classList.add('show');
+}
+
+function resetForm(){
+  document.getElementById('name').value = '';
+  document.getElementById('emp-id').value = '';
+  document.getElementById('warehouse').value = '';
+  document.getElementById('err-msg').classList.remove('show');
+  selectedShift = 'vao';
+  document.querySelectorAll('.shift-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+  document.getElementById('submit-btn').disabled = false;
+
+  // Reset camera
+  photoBase64 = null;
+  if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+  document.getElementById('video-preview').style.display = 'none';
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('photo-preview').src = '';
+  document.getElementById('cam-placeholder').style.display = '';
+  document.getElementById('btn-open-cam').style.display = '';
+  document.getElementById('btn-snap').style.display = 'none';
+  document.getElementById('btn-retake').style.display = 'none';
+  document.getElementById('photo-ok-badge').classList.remove('show');
+  document.getElementById('camera-box').classList.remove('has-preview');
+  document.getElementById('camera-box').style.borderColor = '';
+
+  // Reset success
+  document.getElementById('success-photo').classList.remove('show');
+  document.getElementById('success-photo').src = '';
+  document.getElementById('success-screen').classList.remove('show');
+  document.getElementById('main-form').style.display = '';
+}
+</script>
+</body>
+</html>
