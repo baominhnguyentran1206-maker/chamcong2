@@ -66,6 +66,21 @@
   .today-text { font-size: 13px; color: #444; font-weight: 500; }
   .today-sub { font-size: 11px; color: #999; margin-left: auto; }
 
+  /* GPS BADGE */
+  .gps-badge { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 10px 14px; transition: border-color 0.2s; }
+  .gps-badge.err { cursor: pointer; border-color: #e24b4a; background: #fcebeb; }
+  .gps-badge.ok { border-color: #639922; background: #f6fbee; }
+  
+  .gps-dot { width: 8px; height: 8px; border-radius: 50%; background: #ddd; flex-shrink: 0; transition: background 0.3s; animation: none; }
+  .gps-dot.scanning { background: #f5a623; animation: pulse 1s infinite; }
+  .gps-dot.ok { background: #639922; animation: none; }
+  .gps-dot.err { background: #e24b4a; animation: none; }
+  
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  
+  .gps-text { font-size: 13px; color: #444; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gps-sub { font-size: 11px; color: #999; white-space: nowrap; }
+
   /* CAMERA */
   .camera-box {
     border: 1.5px dashed #d0d0d0; border-radius: 14px;
@@ -140,28 +155,6 @@
   .success-photo.show { display: block; }
   .reset-btn { width: 100%; height: 48px; background: transparent; border: 1.5px solid #c0dd97; border-radius: 14px; color: #3b6d11; font-size: 15px; font-weight: 500; cursor: pointer; font-family: inherit; transition: background 0.15s; }
   .reset-btn:active { background: #eaf3de; }
-
-  /* LOCATION */
-  .location-box {
-    display: flex; align-items: center; gap: 10px;
-    background: #fff; border: 1.5px solid #e0e0e0; border-radius: 12px;
-    padding: 11px 14px; transition: border-color 0.2s;
-  }
-  .location-box.ok   { border-color: #639922; background: #f6fbee; }
-  .location-box.err  { border-color: #e24b4a; background: #fcebeb; }
-  .location-box.busy { border-color: #534AB7; background: #f5f4ff; }
-  .loc-icon { font-size: 18px; flex-shrink: 0; }
-  .loc-text { flex: 1; font-size: 13px; line-height: 1.4; }
-  .loc-title { font-weight: 600; color: #1a1a1a; }
-  .loc-sub   { font-size: 11px; color: #888; margin-top: 1px; }
-  .loc-btn {
-    flex-shrink: 0; height: 34px; padding: 0 12px;
-    border: none; border-radius: 8px; font-size: 12px; font-weight: 600;
-    cursor: pointer; font-family: inherit; transition: opacity 0.15s;
-    background: #1a1a2e; color: #e8ff6b;
-  }
-  .loc-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .loc-btn:active   { opacity: 0.8; }
 </style>
 </head>
 <body>
@@ -233,13 +226,11 @@
       <span class="today-sub">Ngày hôm nay · tự động</span>
     </div>
 
-    <div class="location-box busy" id="loc-box">
-      <div class="loc-icon" id="loc-icon">🔄</div>
-      <div class="loc-text">
-        <div class="loc-title" id="loc-title">Đang lấy vị trí...</div>
-        <div class="loc-sub" id="loc-sub">Vui lòng cho phép truy cập GPS</div>
-      </div>
-      <button class="loc-btn" id="loc-btn" onclick="getLocation()" style="display:none;">↺</button>
+    <!-- GPS BADGE -->
+    <div class="gps-badge" id="gps-badge" onclick="retryLocation()">
+      <div class="gps-dot scanning" id="gps-dot"></div>
+      <span class="gps-text" id="gps-text">Đang lấy vị trí...</span>
+      <span class="gps-sub" id="gps-sub">Vui lòng chờ</span>
     </div>
 
     <div class="divider"></div>
@@ -329,7 +320,7 @@ window.addEventListener('load', getLocation);
 
 /* ── APPS SCRIPT URL ── */
 // ⬇⬇⬇ DÁN URL APPS SCRIPT CỦA BẠN VÀO ĐÂY ⬇⬇⬇
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw9ZT4kC1NLw48-NxBz9ePfO6akB7Yhaa-K1RvVJPXAmxRiuNPSFc1VAAS3K5DoZX66/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1U3FjwQnbK262oXlfnR_CXVfthNnh9wiBvOcErke8L0FvJg763JoSX5RgTFmtCWvT/exec';
 // ⬆⬆⬆ CHỈ SỬA DÒNG TRÊN, KHÔNG SỬA GÌ KHÁC ⬆⬆⬆
 
 /* ── SHIFT TOGGLE ── */
@@ -400,46 +391,47 @@ let locationData = null; // { lat, lng, accuracy, mapsLink }
 
 function getLocation(){
   if(!navigator.geolocation){
-    setLocState('err','Thiết bị không hỗ trợ GPS','Dùng thiết bị khác có GPS');
-    document.getElementById('loc-btn').style.display = 'none';
+    setGpsState('err', 'Thiết bị không hỗ trợ GPS', 'Bấm thử lại');
     return;
   }
-  setLocState('busy','Đang định vị...','Vui lòng giữ yên thiết bị');
-  document.getElementById('loc-btn').style.display = 'none';
+  setGpsState('scanning', 'Đang định vị...', 'Giữ yên thiết bị');
 
   navigator.geolocation.getCurrentPosition(
     pos => {
       const { latitude: lat, longitude: lng, accuracy } = pos.coords;
       const mapsLink = 'https://www.google.com/maps?q=' + lat + ',' + lng;
       locationData = { lat, lng, accuracy: Math.round(accuracy), mapsLink };
-      setLocState('ok',
-        lat.toFixed(6) + ', ' + lng.toFixed(6),
-        '\u00b1' + Math.round(accuracy) + 'm \u00b7 <a href="' + mapsLink + '" target="_blank" style="color:#534AB7;font-weight:600;">\ud83d\udccd Xem Maps \u2197</a>'
+      
+      setGpsState('ok', 
+        lat.toFixed(6) + ', ' + lng.toFixed(6), 
+        '<a href="' + mapsLink + '" target="_blank" style="color:#534AB7;font-weight:600;text-decoration:none;">📍 Xem Maps ↗</a>'
       );
-      const btn = document.getElementById('loc-btn');
-      btn.textContent = '\u21ba';
-      btn.style.display = '';
-      btn.disabled = false;
     },
     err => {
-      const msgs = {1:'T\u1eeb ch\u1ed1i quy\u1ec1n GPS \u2014 B\u1eaft bu\u1ed9c c\u1ea5p ph\u00e9p',2:'Kh\u00f4ng l\u1ea5y \u0111\u01b0\u1ee3c t\xedn hi\u1ec7u GPS',3:'Qu\u00e1 th\u1eddi gian ch\u1edd GPS'};
-      setLocState('err', msgs[err.code] || 'L\u1ed7i GPS', 'B\u1ea5m n\u00fat th\u1eed l\u1ea1i \u0111\u1ec3 \u0111\u1ecbnh v\u1ecb l\u1ea1i');
-      const btn = document.getElementById('loc-btn');
-      btn.textContent = 'Th\u1eed l\u1ea1i';
-      btn.style.display = '';
-      btn.disabled = false;
+      const msgs = {1:'Từ chối quyền GPS', 2:'Không có tín hiệu', 3:'Quá thời gian chờ'};
+      setGpsState('err', msgs[err.code] || 'Lỗi GPS', 'Bấm để thử lại');
     },
     { enableHighAccuracy: true, timeout: 14000, maximumAge: 0 }
   );
 }
 
-function setLocState(state, title, sub){
-  const box  = document.getElementById('loc-box');
-  const icon = document.getElementById('loc-icon');
-  box.className = 'location-box ' + state;
-  document.getElementById('loc-title').textContent = title;
-  document.getElementById('loc-sub').innerHTML = sub;
-  icon.textContent = state === 'ok' ? '\u2705' : state === 'err' ? '\u26a0\ufe0f' : '\ud83d\udd04';
+function setGpsState(state, text, subText){
+  const badge = document.getElementById('gps-badge');
+  const dot = document.getElementById('gps-dot');
+  
+  // Reset classes
+  badge.className = 'gps-badge ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : '');
+  dot.className = 'gps-dot ' + state;
+  
+  document.getElementById('gps-text').textContent = text;
+  document.getElementById('gps-sub').innerHTML = subText;
+}
+
+function retryLocation() {
+  const badge = document.getElementById('gps-badge');
+  if (badge.classList.contains('err')) {
+    getLocation();
+  }
 }
 
 /* ── SUBMIT ── */
@@ -464,7 +456,7 @@ async function submitForm(){
     return;
   }
   if(!locationData){
-    const locBox = document.getElementById('loc-box');
+    const locBox = document.getElementById('gps-badge');
     showErr('Vị trí GPS là bắt buộc. Vui lòng cho phép truy cập vị trí và thử lại.');
     locBox.style.outline = '2px solid #e24b4a';
     locBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -596,8 +588,7 @@ function resetForm(){
 
   // Reset location — tự động lấy lại vị trí
   locationData = null;
-  setLocState('busy', 'Đang lấy vị trí...', 'Vui lòng chờ');
-  document.getElementById('loc-btn').style.display = 'none';
+  setGpsState('scanning', 'Đang lấy vị trí...', 'Vui lòng chờ');
   getLocation();
 
   // Reset success
