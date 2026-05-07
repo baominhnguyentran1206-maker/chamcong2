@@ -373,7 +373,7 @@ updateTodayBadge(); setInterval(updateTodayBadge, 60000);
 
 /* ── APPS SCRIPT URL ── */
 // ⬇⬇⬇ DÁN URL APPS SCRIPT CỦA BẠN VÀO ĐÂY ⬇⬇⬇
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwIn-crrwdylKE1cSqclXFBbL3JZYskDsTaHbk5qk27uwTiVW5JTSRsiMcBNEdtbLRx/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw80JMYRlzabRYZc3a9UOmv7No0jNohUIQO4zXIZcb4D72tOxKmgC6PkNGDJayOYU5V/exec';
 // ⬆⬆⬆ CHỈ SỬA DÒNG TRÊN, KHÔNG SỬA GÌ KHÁC ⬆⬆⬆
 
 /* ── SHIFT TOGGLE ── */
@@ -489,17 +489,29 @@ function initGPS(){
 initGPS();
 
 /* ── KIỂM TRA VÀO CA ── */
+// Dùng POST (không dùng GET) để tránh CORS redirect của Apps Script
+// Apps Script xử lý trong doPost: nếu action='checkVaoCA' thì chỉ check, không ghi sheet
 async function checkDaVaoCA(empId, dateVN){
-  // Gọi Apps Script với action=checkVaoCA để kiểm tra ID đã chấm vào ca chưa
-  // Apps Script cần xử lý action này và trả { status:'ok', daVao: true/false }
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=checkVaoCA&empId=' + encodeURIComponent(empId) + '&date=' + encodeURIComponent(dateVN));
-    const json = await res.json();
+    const xhr = await new Promise((resolve) => {
+      const x = new XMLHttpRequest();
+      x.open('POST', APPS_SCRIPT_URL, true);
+      x.setRequestHeader('Content-Type', 'text/plain');
+      x.timeout = 8000;
+      x.onload  = () => resolve(x);
+      x.onerror = () => resolve(null);
+      x.ontimeout = () => resolve(null);
+      x.send(JSON.stringify({ action: 'checkVaoCA', empId, date: dateVN }));
+    });
+    if(!xhr) throw new Error('no response');
+    const json = JSON.parse(xhr.responseText);
+    // Apps Script trả { daVao: true } hoặc { daVao: false }
     return json.daVao === true;
   } catch(e) {
-    // Nếu không check được (mạng lỗi, CORS,...) → cho qua để không block NV
-    console.warn('Không check được vào ca:', e);
-    return true;
+    // Nếu không parse được response → có thể CORS redirect → block để an toàn
+    console.warn('checkDaVaoCA lỗi:', e.message);
+    // Trả false để hiện popup, tránh bỏ sót trường hợp chưa vào ca
+    return false;
   }
 }
 
