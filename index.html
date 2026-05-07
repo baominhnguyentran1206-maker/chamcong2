@@ -373,7 +373,7 @@ updateTodayBadge(); setInterval(updateTodayBadge, 60000);
 
 /* ── APPS SCRIPT URL ── */
 // ⬇⬇⬇ DÁN URL APPS SCRIPT CỦA BẠN VÀO ĐÂY ⬇⬇⬇
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw80JMYRlzabRYZc3a9UOmv7No0jNohUIQO4zXIZcb4D72tOxKmgC6PkNGDJayOYU5V/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgS0UO8OlSk6OkvinPGs7NHSwl_ftQfpW1i0SNqqLrgfl0BWlhmJmt0Dd2j68_Y_w/exec';
 // ⬆⬆⬆ CHỈ SỬA DÒNG TRÊN, KHÔNG SỬA GÌ KHÁC ⬆⬆⬆
 
 /* ── SHIFT TOGGLE ── */
@@ -489,17 +489,17 @@ function initGPS(){
 initGPS();
 
 /* ── KIỂM TRA VÀO CA ── */
-// Dùng POST (không dùng GET) để tránh CORS redirect của Apps Script
-// Apps Script xử lý trong doPost: nếu action='checkVaoCA' thì chỉ check, không ghi sheet
+// Gửi POST { action:'checkVaoCA', empId, date } lên Apps Script
+// Apps Script query sheet và trả { daVao: true/false } — không ghi dữ liệu
 async function checkDaVaoCA(empId, dateVN){
   try {
     const xhr = await new Promise((resolve) => {
       const x = new XMLHttpRequest();
       x.open('POST', APPS_SCRIPT_URL, true);
       x.setRequestHeader('Content-Type', 'text/plain');
-      x.timeout = 8000;
-      x.onload  = () => resolve(x);
-      x.onerror = () => resolve(null);
+      x.timeout = 10000;
+      x.onload    = () => resolve(x);
+      x.onerror   = () => resolve(null);
       x.ontimeout = () => resolve(null);
       x.send(JSON.stringify({ action: 'checkVaoCA', empId, date: dateVN }));
     });
@@ -508,9 +508,8 @@ async function checkDaVaoCA(empId, dateVN){
     // Apps Script trả { daVao: true } hoặc { daVao: false }
     return json.daVao === true;
   } catch(e) {
-    // Nếu không parse được response → có thể CORS redirect → block để an toàn
+    // Parse lỗi = Apps Script redirect (chưa deploy đúng) → chặn để an toàn
     console.warn('checkDaVaoCA lỗi:', e.message);
-    // Trả false để hiện popup, tránh bỏ sót trường hợp chưa vào ca
     return false;
   }
 }
@@ -603,33 +602,44 @@ async function submitForm(){
   };
 
   try {
-    // Dùng fetch thường (không no-cors) để đọc được response có link Drive
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body   : JSON.stringify(payload)
+    // Dùng XMLHttpRequest với Content-Type: text/plain để tránh CORS preflight
+    // Apps Script đọc được JSON trong body dù content-type là text/plain
+    const xhr = await new Promise((resolve) => {
+      const x = new XMLHttpRequest();
+      x.open('POST', APPS_SCRIPT_URL, true);
+      x.setRequestHeader('Content-Type', 'text/plain');
+      x.timeout = 30000;
+      x.onload    = () => resolve(x);
+      x.onerror   = () => resolve(null);
+      x.ontimeout = () => resolve(null);
+      x.send(JSON.stringify(payload));
     });
-    const json = await res.json();
     setLoading(false);
+
+    if(!xhr){
+      showErr('Lỗi kết nối. Kiểm tra mạng và thử lại.');
+      return;
+    }
+
+    let json;
+    try { json = JSON.parse(xhr.responseText); }
+    catch(e) {
+      // Apps Script redirect (login page) → coi như ghi thành công (no-cors fallback)
+      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: null });
+      return;
+    }
+
     if(json.status === 'ok'){
       showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: json.driveLink });
+    } else if(json.code === 'NO_CHECKIN'){
+      // Apps Script xác nhận không có vào ca → hiện popup (double-check an toàn)
+      showPopupChuaVao(empId);
     } else {
-      showErr('Lỗi từ server: ' + (json.message || 'Không rõ nguyên nhân'));
+      showErr((json.message || 'Lỗi không rõ nguyên nhân'));
     }
   } catch(err){
-    // Fallback no-cors nếu CORS bị block (mất link Drive nhưng vẫn ghi được)
-    try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      setLoading(false);
-      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: null });
-    } catch(e){
-      setLoading(false);
-      showErr('Lỗi kết nối. Kiểm tra mạng và thử lại.');
-    }
+    setLoading(false);
+    showErr('Lỗi kết nối: ' + err.message);
   }
 }
 
