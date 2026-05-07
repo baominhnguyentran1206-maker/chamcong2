@@ -66,21 +66,6 @@
   .today-text { font-size: 13px; color: #444; font-weight: 500; }
   .today-sub { font-size: 11px; color: #999; margin-left: auto; }
 
-  /* GPS BADGE */
-  .gps-badge { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 10px 14px; transition: border-color 0.2s; }
-  .gps-badge.err { cursor: pointer; border-color: #e24b4a; background: #fcebeb; }
-  .gps-badge.ok { border-color: #639922; background: #f6fbee; }
-  
-  .gps-dot { width: 8px; height: 8px; border-radius: 50%; background: #ddd; flex-shrink: 0; transition: background 0.3s; animation: none; }
-  .gps-dot.scanning { background: #f5a623; animation: pulse 1s infinite; }
-  .gps-dot.ok { background: #639922; animation: none; }
-  .gps-dot.err { background: #e24b4a; animation: none; }
-  
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-  
-  .gps-text { font-size: 13px; color: #444; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .gps-sub { font-size: 11px; color: #999; white-space: nowrap; }
-
   /* CAMERA */
   .camera-box {
     border: 1.5px dashed #d0d0d0; border-radius: 14px;
@@ -155,6 +140,57 @@
   .success-photo.show { display: block; }
   .reset-btn { width: 100%; height: 48px; background: transparent; border: 1.5px solid #c0dd97; border-radius: 14px; color: #3b6d11; font-size: 15px; font-weight: 500; cursor: pointer; font-family: inherit; transition: background 0.15s; }
   .reset-btn:active { background: #eaf3de; }
+
+  /* GPS BADGE */
+  .gps-badge { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 10px 14px; transition: border-color 0.2s; }
+  .gps-dot { width: 8px; height: 8px; border-radius: 50%; background: #ddd; flex-shrink: 0; transition: background 0.3s; }
+  .gps-dot.scanning { background: #f5a623; animation: pulse 1s infinite; }
+  .gps-dot.ok  { background: #639922; animation: none; }
+  .gps-dot.err { background: #e24b4a; animation: none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .gps-text { font-size: 13px; color: #444; font-weight: 500; flex: 1; min-width: 0; }
+  .gps-sub  { font-size: 11px; color: #999; white-space: nowrap; }
+
+  /* POPUP / MODAL */
+  .popup-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 999;
+    align-items: center; justify-content: center; padding: 1.5rem;
+  }
+  .popup-overlay.show { display: flex; }
+  .popup-box {
+    background: #fff; border-radius: 18px; width: 100%; max-width: 360px;
+    overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    animation: popIn 0.2s ease;
+  }
+  @keyframes popIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .popup-header {
+    background: #fff4e5; padding: 1.25rem 1.25rem 1rem;
+    display: flex; align-items: flex-start; gap: 12px;
+    border-bottom: 1px solid #f0e0c8;
+  }
+  .popup-icon {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    background: #f5a623; display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .popup-title { font-size: 15px; font-weight: 700; color: #7a4400; margin-bottom: 4px; }
+  .popup-msg   { font-size: 13px; color: #9a5c00; line-height: 1.5; }
+  .popup-body  { padding: 1rem 1.25rem 1.25rem; display: flex; flex-direction: column; gap: 8px; }
+  .popup-btn-main {
+    width: 100%; height: 46px; border: none; border-radius: 12px;
+    background: #1a1a2e; color: #e8ff6b;
+    font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit;
+    transition: opacity 0.15s;
+  }
+  .popup-btn-main:active { opacity: 0.85; }
+  .popup-btn-sec {
+    width: 100%; height: 42px; border: 1.5px solid #e0e0e0; border-radius: 12px;
+    background: transparent; color: #555;
+    font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit;
+    transition: background 0.15s;
+  }
+  .popup-btn-sec:active { background: #f5f5f5; }
 </style>
 </head>
 <body>
@@ -227,10 +263,10 @@
     </div>
 
     <!-- GPS BADGE -->
-    <div class="gps-badge" id="gps-badge" onclick="retryLocation()">
+    <div class="gps-badge" id="gps-badge">
       <div class="gps-dot scanning" id="gps-dot"></div>
       <span class="gps-text" id="gps-text">Đang lấy vị trí...</span>
-      <span class="gps-sub" id="gps-sub">Vui lòng chờ</span>
+      <span class="gps-sub" id="gps-sub">GPS</span>
     </div>
 
     <div class="divider"></div>
@@ -293,6 +329,26 @@
     <button class="reset-btn" onclick="resetForm()">+ Chấm công lần khác</button>
   </div>
 
+  <!-- POPUP: Chưa vào ca -->
+  <div class="popup-overlay" id="popup-chua-vao">
+    <div class="popup-box">
+      <div class="popup-header">
+        <div class="popup-icon">⚠️</div>
+        <div>
+          <div class="popup-title">Chưa ghi nhận vào ca</div>
+          <div class="popup-msg" id="popup-msg">
+            ID này chưa ghi nhận vào ca hôm nay.<br>
+            Vui lòng kiểm tra lại ID hoặc chấm vào ca trước.
+          </div>
+        </div>
+      </div>
+      <div class="popup-body">
+        <button class="popup-btn-main" onclick="closePopup(); switchToVaoCa()">▶ Chuyển sang Vào ca</button>
+        <button class="popup-btn-sec"  onclick="closePopup()">← Nhập lại ID</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -315,12 +371,9 @@ function getTodayVN(){
 function updateTodayBadge(){ document.getElementById('today-display').textContent = getTodayVN(); }
 updateTodayBadge(); setInterval(updateTodayBadge, 60000);
 
-/* Auto lấy vị trí khi load */
-window.addEventListener('load', getLocation);
-
 /* ── APPS SCRIPT URL ── */
 // ⬇⬇⬇ DÁN URL APPS SCRIPT CỦA BẠN VÀO ĐÂY ⬇⬇⬇
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1U3FjwQnbK262oXlfnR_CXVfthNnh9wiBvOcErke8L0FvJg763JoSX5RgTFmtCWvT/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwIn-crrwdylKE1cSqclXFBbL3JZYskDsTaHbk5qk27uwTiVW5JTSRsiMcBNEdtbLRx/exec';
 // ⬆⬆⬆ CHỈ SỬA DÒNG TRÊN, KHÔNG SỬA GÌ KHÁC ⬆⬆⬆
 
 /* ── SHIFT TOGGLE ── */
@@ -386,53 +439,95 @@ function retakePhoto(){
   openCamera();
 }
 
-/* ── LOCATION ── */
-let locationData = null; // { lat, lng, accuracy, mapsLink }
+/* ── GPS / GEOLOCATION ── */
+let gpsData = null; // { lat, lng, accuracy, mapsLink }
 
-function getLocation(){
+function initGPS(){
+  const dot  = document.getElementById('gps-dot');
+  const text = document.getElementById('gps-text');
+  const sub  = document.getElementById('gps-sub');
+  const badge = document.getElementById('gps-badge');
+
   if(!navigator.geolocation){
-    setGpsState('err', 'Thiết bị không hỗ trợ GPS', 'Bấm thử lại');
+    dot.className    = 'gps-dot err';
+    text.textContent = 'Thiết bị không hỗ trợ GPS';
+    sub.textContent  = 'Lỗi';
     return;
   }
-  setGpsState('scanning', 'Đang định vị...', 'Giữ yên thiết bị');
+
+  dot.className    = 'gps-dot scanning';
+  text.textContent = 'Đang lấy vị trí...';
+  sub.textContent  = 'GPS';
+  badge.style.cursor = '';
+  badge.onclick = null;
 
   navigator.geolocation.getCurrentPosition(
-    pos => {
-      const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-      const mapsLink = 'https://www.google.com/maps?q=' + lat + ',' + lng;
-      locationData = { lat, lng, accuracy: Math.round(accuracy), mapsLink };
-      
-      setGpsState('ok', 
-        lat.toFixed(6) + ', ' + lng.toFixed(6), 
-        '<a href="' + mapsLink + '" target="_blank" style="color:#534AB7;font-weight:600;text-decoration:none;">📍 Xem Maps ↗</a>'
-      );
+    function(pos){
+      const lat = pos.coords.latitude.toFixed(6);
+      const lng = pos.coords.longitude.toFixed(6);
+      const acc = Math.round(pos.coords.accuracy);
+      gpsData = {
+        lat, lng, accuracy: acc,
+        mapsLink: 'https://www.google.com/maps?q=' + lat + ',' + lng
+      };
+      dot.className    = 'gps-dot ok';
+      text.textContent = lat + ', ' + lng;
+      sub.textContent  = '±' + acc + 'm';
     },
-    err => {
-      const msgs = {1:'Từ chối quyền GPS', 2:'Không có tín hiệu', 3:'Quá thời gian chờ'};
-      setGpsState('err', msgs[err.code] || 'Lỗi GPS', 'Bấm để thử lại');
+    function(err){
+      gpsData = null;
+      dot.className = 'gps-dot err';
+      const msgs = {1:'Bị từ chối quyền GPS', 2:'Không lấy được vị trí', 3:'Hết thời gian chờ GPS'};
+      text.textContent = msgs[err.code] || 'Lỗi GPS';
+      sub.textContent  = 'Thử lại ↺';
+      badge.style.cursor = 'pointer';
+      badge.onclick = function(){ initGPS(); };
     },
-    { enableHighAccuracy: true, timeout: 14000, maximumAge: 0 }
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 }
+initGPS();
 
-function setGpsState(state, text, subText){
-  const badge = document.getElementById('gps-badge');
-  const dot = document.getElementById('gps-dot');
-  
-  // Reset classes
-  badge.className = 'gps-badge ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : '');
-  dot.className = 'gps-dot ' + state;
-  
-  document.getElementById('gps-text').textContent = text;
-  document.getElementById('gps-sub').innerHTML = subText;
-}
-
-function retryLocation() {
-  const badge = document.getElementById('gps-badge');
-  if (badge.classList.contains('err')) {
-    getLocation();
+/* ── KIỂM TRA VÀO CA ── */
+async function checkDaVaoCA(empId, dateVN){
+  // Gọi Apps Script với action=checkVaoCA để kiểm tra ID đã chấm vào ca chưa
+  // Apps Script cần xử lý action này và trả { status:'ok', daVao: true/false }
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=checkVaoCA&empId=' + encodeURIComponent(empId) + '&date=' + encodeURIComponent(dateVN));
+    const json = await res.json();
+    return json.daVao === true;
+  } catch(e) {
+    // Nếu không check được (mạng lỗi, CORS,...) → cho qua để không block NV
+    console.warn('Không check được vào ca:', e);
+    return true;
   }
 }
+
+function showPopupChuaVao(empId){
+  document.getElementById('popup-msg').innerHTML =
+    'ID <strong>' + empId + '</strong> chưa ghi nhận vào ca hôm nay.<br>Vui lòng kiểm tra lại ID hoặc chấm vào ca trước.';
+  document.getElementById('popup-chua-vao').classList.add('show');
+}
+
+function closePopup(){
+  document.getElementById('popup-chua-vao').classList.remove('show');
+}
+
+function switchToVaoCa(){
+  const btnVao = document.querySelector('.shift-btn[data-val="vao"]');
+  if(btnVao) selectShift(btnVao);
+  // Highlight ô ID để NV xác nhận lại
+  const idInput = document.getElementById('emp-id');
+  idInput.focus();
+  idInput.style.borderColor = '#534AB7';
+  setTimeout(() => idInput.style.borderColor = '', 2000);
+}
+
+// Đóng popup khi click ngoài box
+document.addEventListener('click', function(e){
+  const overlay = document.getElementById('popup-chua-vao');
+  if(e.target === overlay) closePopup();
+});
 
 /* ── SUBMIT ── */
 async function submitForm(){
@@ -455,17 +550,28 @@ async function submitForm(){
     setTimeout(() => document.getElementById('camera-box').style.borderColor = '', 2000);
     return;
   }
-  if(!locationData){
-    const locBox = document.getElementById('gps-badge');
+  if(!gpsData){
+    const badge = document.getElementById('gps-badge');
     showErr('Vị trí GPS là bắt buộc. Vui lòng cho phép truy cập vị trí và thử lại.');
-    locBox.style.outline = '2px solid #e24b4a';
-    locBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => locBox.style.outline = '', 2500);
+    badge.style.outline = '2px solid #e24b4a';
+    badge.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => badge.style.outline = '', 2500);
     return;
   }
   if(!APPS_SCRIPT_URL.startsWith('https://script.google.com')){
     showErr('Chưa cài đặt URL Apps Script. Liên hệ quản trị viên.');
     return;
+  }
+
+  // Nếu chấm RA ca → kiểm tra đã có VÀO ca chưa
+  if(selectedShift === 'ra'){
+    setLoading(true, 'Đang kiểm tra dữ liệu vào ca...');
+    const daVao = await checkDaVaoCA(empId, dateVN);
+    setLoading(false);
+    if(!daVao){
+      showPopupChuaVao(empId);
+      return;
+    }
   }
 
   setLoading(true, 'Đang tải ảnh lên Drive...');
@@ -478,10 +584,10 @@ async function submitForm(){
     photo     : photoBase64,          // base64 JPEG
     photoName : empId + '_' + selectedShift + '_' + dateVN.replace(/\//g,'-') + '_' + timeNow.replace(':','') + '.jpg',
     // Vị trí GPS
-    lat       : locationData ? locationData.lat       : '',
-    lng       : locationData ? locationData.lng       : '',
-    accuracy  : locationData ? locationData.accuracy  : '',
-    mapsLink  : locationData ? locationData.mapsLink  : ''
+    gpsLat   : gpsData ? gpsData.lat      : '',
+    gpsLng   : gpsData ? gpsData.lng      : '',
+    gpsAcc   : gpsData ? gpsData.accuracy : '',
+    mapsLink : gpsData ? gpsData.mapsLink : ''
   };
 
   try {
@@ -494,7 +600,7 @@ async function submitForm(){
     const json = await res.json();
     setLoading(false);
     if(json.status === 'ok'){
-      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: json.driveLink, locationData });
+      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: json.driveLink });
     } else {
       showErr('Lỗi từ server: ' + (json.message || 'Không rõ nguyên nhân'));
     }
@@ -507,7 +613,7 @@ async function submitForm(){
         body: JSON.stringify(payload)
       });
       setLoading(false);
-      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: null, locationData });
+      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: null });
     } catch(e){
       setLoading(false);
       showErr('Lỗi kết nối. Kiểm tra mạng và thử lại.');
@@ -545,8 +651,11 @@ function showSuccess(p){
   if(p.driveLink){
     rows.push(['Ảnh Drive', `<a href="${p.driveLink}" target="_blank">Xem ảnh ↗</a>`]);
   }
-  if(p.locationData){
-    rows.push(['Vị trí GPS', `<a href="${p.locationData.mapsLink}" target="_blank">Xem trên Maps ↗</a><br><span style="font-size:11px;color:#888">±${p.locationData.accuracy}m</span>`]);
+  if(gpsData){
+    rows.push(['Vị trí', '<a href="' + gpsData.mapsLink + '" target="_blank">Xem bản đồ ↗</a>']);
+    rows.push(['Độ chính xác', '±' + gpsData.accuracy + 'm']);
+  } else {
+    rows.push(['Vị trí', 'Không lấy được GPS']);
   }
 
   document.getElementById('detail-rows').innerHTML = rows.map(([l,v]) =>
@@ -586,10 +695,14 @@ function resetForm(){
   document.getElementById('camera-box').classList.remove('has-preview');
   document.getElementById('camera-box').style.borderColor = '';
 
-  // Reset location — tự động lấy lại vị trí
-  locationData = null;
-  setGpsState('scanning', 'Đang lấy vị trí...', 'Vui lòng chờ');
-  getLocation();
+  // Reset GPS
+  gpsData = null;
+  document.getElementById('gps-dot').className  = 'gps-dot scanning';
+  document.getElementById('gps-text').textContent = 'Đang lấy vị trí...';
+  document.getElementById('gps-sub').textContent  = 'GPS';
+  document.getElementById('gps-badge').style.cursor = '';
+  document.getElementById('gps-badge').onclick = null;
+  initGPS();
 
   // Reset success
   document.getElementById('success-photo').classList.remove('show');
