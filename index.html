@@ -594,10 +594,22 @@ function initGPS(){
 initGPS();
 
 /* ── KIỂM TRA VÀO CA ── */
-// Gửi POST { action:'checkVaoCA', empId, date } lên Apps Script
-// Apps Script query sheet và trả { daVao: true/false } — không ghi dữ liệu
-async function checkDaVaoCA(empId, dateVN, caId){
+// Gửi POST lên Apps Script để check trước khi submit
+// - Khi VÀO ca mới: gửi caStart/caEnd để check overlap
+// - Khi RA ca     : gửi caStart=0/caEnd=0 để check daVao
+async function checkDaVaoCA(empId, dateVN, warehouse, caLabel, isRaCa){
   try {
+    const payload = {
+      action    : 'checkVaoCA',
+      empId,
+      date      : dateVN,
+      warehouse,
+      caLabel,
+      // Khi ra ca: KHÔNG gửi caStart/caEnd (= 0) → Apps Script check nhánh daVao
+      // Khi vào ca mới: gửi caStart/caEnd → Apps Script check overlap
+      caStart   : isRaCa ? 0 : (selectedCa ? (selectedCa.startH * 60 + selectedCa.startM) : 0),
+      caEnd     : isRaCa ? 0 : (selectedCa ? (selectedCa.endH   * 60 + selectedCa.endM)   : 0),
+    };
     const xhr = await new Promise((resolve) => {
       const x = new XMLHttpRequest();
       x.open('POST', APPS_SCRIPT_URL, true);
@@ -606,22 +618,13 @@ async function checkDaVaoCA(empId, dateVN, caId){
       x.onload    = () => resolve(x);
       x.onerror   = () => resolve(null);
       x.ontimeout = () => resolve(null);
-      x.send(JSON.stringify({
-        action : 'checkVaoCA',
-        empId,
-        date   : dateVN,
-        caId   : caId,
-        caStart: selectedCa ? (selectedCa.startH * 60 + selectedCa.startM) : 0,
-        caEnd  : selectedCa ? (selectedCa.endH   * 60 + selectedCa.endM)   : 0,
-      }));
+      x.send(JSON.stringify(payload));
     });
     if(!xhr) throw new Error('no response');
     const json = JSON.parse(xhr.responseText);
-    // Apps Script trả { daVao: true/false, overlap: true/false }
     if(json.overlap === true) return 'overlap';
     return json.daVao === true;
   } catch(e) {
-    // Parse lỗi = Apps Script redirect (chưa deploy đúng) → chặn để an toàn
     console.warn('checkDaVaoCA lỗi:', e.message);
     return false;
   }
@@ -720,7 +723,7 @@ async function submitForm(){
   // Nếu chấm RA ca → kiểm tra đã có VÀO ca chưa (đúng empId + đúng caId)
   if(selectedShift === 'ra'){
     setLoading(true, 'Đang kiểm tra dữ liệu vào ca...');
-    const checkResult = await checkDaVaoCA(empId, dateVN, caId);
+    const checkResult = await checkDaVaoCA(empId, dateVN, warehouse, caLabel, true);
     setLoading(false);
     if(checkResult === 'overlap'){
       showPopupChuaVao(empId, caLabel, true);
