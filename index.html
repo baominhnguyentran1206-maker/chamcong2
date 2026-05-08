@@ -47,7 +47,7 @@
   }
   .field input:focus, .field select:focus { outline: none; border-color: #534AB7; box-shadow: 0 0 0 3px rgba(83,74,183,0.12); }
 
-  /* SHIFT TOGGLE */
+  /* SHIFT TOGGLE (Vào/Ra ca) */
   .shift-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .shift-btn {
     padding: 14px 8px; border: 1.5px solid #e0e0e0; border-radius: 12px;
@@ -59,6 +59,31 @@
   .shift-btn.active { background: #1a1a2e; color: #e8ff6b; border-color: #1a1a2e; }
   .shift-btn.active .shift-label { color: rgba(232,255,107,0.6); }
   .shift-btn:active { transform: scale(0.97); }
+
+  /* CA LÀM VIỆC SELECTOR */
+  .ca-selector { display: flex; flex-direction: column; gap: 8px; }
+  .ca-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border: 1.5px solid #e0e0e0; border-radius: 12px;
+    background: #fff; cursor: pointer; text-align: left; transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent; width: 100%;
+  }
+  .ca-btn.active { border-color: #534AB7; background: #f5f4ff; }
+  .ca-btn:active { transform: scale(0.98); }
+  .ca-radio {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid #ccc; flex-shrink: 0; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ca-btn.active .ca-radio { border-color: #534AB7; background: #534AB7; }
+  .ca-radio::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff; display: none; }
+  .ca-btn.active .ca-radio::after { display: block; }
+  .ca-info { flex: 1; }
+  .ca-name { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+  .ca-btn.active .ca-name { color: #534AB7; }
+  .ca-time { font-size: 12px; color: #888; margin-top: 2px; }
+  .ca-btn.active .ca-time { color: #7b71d4; }
+  .ca-empty { font-size: 13px; color: #bbb; text-align: center; padding: 12px; background: #fafafa; border-radius: 10px; border: 1px dashed #e0e0e0; }
 
   /* TODAY BADGE */
   .today-badge { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 10px 14px; }
@@ -233,13 +258,25 @@
 
     <div class="field">
       <label>Kho làm việc <span style="color:#e24b4a">*</span></label>
-      <select id="warehouse">
+      <select id="warehouse" onchange="onWarehouseChange()">
         <option value="">-- Chọn kho --</option>
-        <option>Kho A - Bình Dương</option>
-        <option>Kho B - Long An</option>
-        <option>Kho C - Đồng Nai</option>
-        <option>Kho D - TP.HCM</option>
+        <option value="Kho GHN Trảng Bom">Kho GHN Trảng Bom</option>
+        <option value="Kho GHN Long Thành">Kho GHN Long Thành</option>
+        <option value="Kho GHN Biên Hoà">Kho GHN Biên Hoà</option>
+        <option value="Kho GHN Thủ Dầu Một">Kho GHN Thủ Dầu Một</option>
+        <option value="Kho GHN Bến Cát">Kho GHN Bến Cát</option>
+        <option value="Kho GHN Thuận An">Kho GHN Thuận An</option>
+        <option value="Kho GHN Dĩ An">Kho GHN Dĩ An</option>
+        <option value="Kho GHN Tây Ninh">Kho GHN Tây Ninh</option>
       </select>
+    </div>
+
+    <!-- CA LÀM VIỆC — hiện sau khi chọn kho -->
+    <div class="field" id="ca-field" style="display:none;">
+      <label>Ca làm việc <span style="color:#e24b4a">*</span></label>
+      <div class="ca-selector" id="ca-selector">
+        <div class="ca-empty">Vui lòng chọn kho trước</div>
+      </div>
     </div>
 
     <div class="divider"></div>
@@ -333,9 +370,9 @@
   <div class="popup-overlay" id="popup-chua-vao">
     <div class="popup-box">
       <div class="popup-header">
-        <div class="popup-icon">⚠️</div>
+        <div class="popup-icon" id="popup-icon-el">⚠️</div>
         <div>
-          <div class="popup-title">Chưa ghi nhận vào ca</div>
+          <div class="popup-title" id="popup-title-text">Chưa ghi nhận vào ca</div>
           <div class="popup-msg" id="popup-msg">
             ID này chưa ghi nhận vào ca hôm nay.<br>
             Vui lòng kiểm tra lại ID hoặc chấm vào ca trước.
@@ -343,8 +380,8 @@
         </div>
       </div>
       <div class="popup-body">
-        <button class="popup-btn-main" onclick="closePopup(); switchToVaoCa()">▶ Chuyển sang Vào ca</button>
-        <button class="popup-btn-sec"  onclick="closePopup()">← Nhập lại ID</button>
+        <button class="popup-btn-main" id="popup-btn-switch" onclick="closePopup(); switchToVaoCa()">▶ Chuyển sang Vào ca</button>
+        <button class="popup-btn-sec"  onclick="closePopup()">← Nhập lại ID / Ca</button>
       </div>
     </div>
   </div>
@@ -373,10 +410,78 @@ updateTodayBadge(); setInterval(updateTodayBadge, 60000);
 
 /* ── APPS SCRIPT URL ── */
 // ⬇⬇⬇ DÁN URL APPS SCRIPT CỦA BẠN VÀO ĐÂY ⬇⬇⬇
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby2U6nNpkVsyk6AB-ccexS3Ap6L7N2kht2962npwZ5MSFgCRjZ4WggB-OMfTHsVqUQ/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyuYaipi1UU8hShntH5WAGROJaUl72fPY6maPsAxAbQGrXfNgCxSsb2Eb5CAJYG9O47/exec';
 // ⬆⬆⬆ CHỈ SỬA DÒNG TRÊN, KHÔNG SỬA GÌ KHÁC ⬆⬆⬆
 
 /* ── SHIFT TOGGLE ── */
+/* ── DANH SÁCH CA LÀM VIỆC THEO KHO ── */
+// startH/startM: giờ bắt đầu, endH/endM: giờ kết thúc (dùng để check overlap)
+/* ── DANH SÁCH CA LÀM VIỆC THEO KHO ── */
+// startH/startM: giờ bắt đầu, endH/endM: giờ kết thúc
+// Dùng để render UI và check overlap khi chấm nhiều ca/ngày
+const _CA_1CA = [{ id: 'ca1', label: 'Ca duy nhất', time: '8:00 - 12:00',  startH: 8,  startM: 0,  endH: 12, endM: 0  }];
+const _CA_BH  = [
+  { id: 'ca1', label: 'Ca 1', time: '5:00 - 12:00',  startH: 5,  startM: 0,  endH: 12, endM: 0  },
+  { id: 'ca2', label: 'Ca 2', time: '15:00 - 22:00', startH: 15, startM: 0,  endH: 22, endM: 0  },
+];
+const _CA_2CA = [
+  { id: 'ca1', label: 'Ca 1', time: '6:30 - 15:30',  startH: 6,  startM: 30, endH: 15, endM: 30 },
+  { id: 'ca2', label: 'Ca 2', time: '13:00 - 22:00', startH: 13, startM: 0,  endH: 22, endM: 0  },
+];
+
+const WAREHOUSE_SHIFTS = {
+  'Kho GHN Trảng Bom'  : _CA_1CA,
+  'Kho GHN Long Thành' : _CA_1CA,
+  'Kho GHN Biên Hoà'   : _CA_BH,
+  'Kho GHN Thủ Dầu Một': _CA_2CA,
+  'Kho GHN Bến Cát'    : _CA_2CA,
+  'Kho GHN Thuận An'   : _CA_2CA,
+  'Kho GHN Dĩ An'      : _CA_2CA,
+  'Kho GHN Tây Ninh'   : _CA_2CA,
+};
+
+let selectedCa = null; // { id, label, time, startH, startM, endH, endM }
+
+// Gọi khi đổi kho — render lại danh sách ca, reset ca đã chọn
+function onWarehouseChange(){
+  const wh      = document.getElementById('warehouse').value;
+  const caField = document.getElementById('ca-field');
+  const caBox   = document.getElementById('ca-selector');
+  selectedCa    = null;
+
+  if(!wh || !WAREHOUSE_SHIFTS[wh]){
+    caField.style.display = 'none';
+    caBox.innerHTML = '<div class="ca-empty">Vui lòng chọn kho trước</div>';
+    return;
+  }
+
+  const shifts = WAREHOUSE_SHIFTS[wh];
+  caBox.innerHTML = shifts.map(s =>
+    '<button class="ca-btn" data-id="' + s.id + '" onclick="selectCa(this,' + JSON.stringify(s).replace(/"/g,"'") + ')">' +
+      '<div class="ca-radio"></div>' +
+      '<div class="ca-info">' +
+        '<div class="ca-name">' + s.label + '</div>' +
+        '<div class="ca-time">⏰ ' + s.time + '</div>' +
+      '</div>' +
+    '</button>'
+  ).join('');
+
+  // Nếu chỉ có 1 ca → tự động chọn luôn
+  if(shifts.length === 1){
+    const btn = caBox.querySelector('.ca-btn');
+    selectCa(btn, shifts[0]);
+  }
+
+  caField.style.display = '';
+}
+
+function selectCa(el, caObj){
+  document.querySelectorAll('.ca-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  selectedCa = caObj;
+}
+
+/* ── VÀO / RA CA (Vào ca / Ra ca) ── */
 let selectedShift = 'vao';
 function selectShift(el){
   document.querySelectorAll('.shift-btn').forEach(b => b.classList.remove('active'));
@@ -491,7 +596,7 @@ initGPS();
 /* ── KIỂM TRA VÀO CA ── */
 // Gửi POST { action:'checkVaoCA', empId, date } lên Apps Script
 // Apps Script query sheet và trả { daVao: true/false } — không ghi dữ liệu
-async function checkDaVaoCA(empId, dateVN){
+async function checkDaVaoCA(empId, dateVN, caId){
   try {
     const xhr = await new Promise((resolve) => {
       const x = new XMLHttpRequest();
@@ -501,11 +606,19 @@ async function checkDaVaoCA(empId, dateVN){
       x.onload    = () => resolve(x);
       x.onerror   = () => resolve(null);
       x.ontimeout = () => resolve(null);
-      x.send(JSON.stringify({ action: 'checkVaoCA', empId, date: dateVN }));
+      x.send(JSON.stringify({
+        action : 'checkVaoCA',
+        empId,
+        date   : dateVN,
+        caId   : caId,
+        caStart: selectedCa ? (selectedCa.startH * 60 + selectedCa.startM) : 0,
+        caEnd  : selectedCa ? (selectedCa.endH   * 60 + selectedCa.endM)   : 0,
+      }));
     });
     if(!xhr) throw new Error('no response');
     const json = JSON.parse(xhr.responseText);
-    // Apps Script trả { daVao: true } hoặc { daVao: false }
+    // Apps Script trả { daVao: true/false, overlap: true/false }
+    if(json.overlap === true) return 'overlap';
     return json.daVao === true;
   } catch(e) {
     // Parse lỗi = Apps Script redirect (chưa deploy đúng) → chặn để an toàn
@@ -514,9 +627,29 @@ async function checkDaVaoCA(empId, dateVN){
   }
 }
 
-function showPopupChuaVao(empId){
-  document.getElementById('popup-msg').innerHTML =
-    'ID <strong>' + empId + '</strong> chưa ghi nhận vào ca hôm nay.<br>Vui lòng kiểm tra lại ID hoặc chấm vào ca trước.';
+function showPopupChuaVao(empId, caLabel, isOverlap){
+  const caStr = caLabel ? ' — <strong>' + caLabel + '</strong>' : '';
+  if(isOverlap){
+    document.getElementById('popup-title-text').textContent = 'Trùng giờ làm việc';
+    document.getElementById('popup-msg').innerHTML =
+      'ID <strong>' + empId + '</strong>' + caStr + ' đã chấm một ca có giờ làm trùng hôm nay.<br>' +
+      'Không thể chấm 2 ca trùng thời gian.';
+    document.getElementById('popup-chua-vao').querySelector('.popup-header').style.background = '#fce8e8';
+    document.getElementById('popup-chua-vao').querySelector('.popup-header').style.borderColor = '#f0c8c8';
+    document.getElementById('popup-icon-el').textContent = '🚫';
+    document.getElementById('popup-icon-el').style.background = '#e24b4a';
+    document.getElementById('popup-btn-switch').style.display = 'none';
+  } else {
+    document.getElementById('popup-title-text').textContent = 'Chưa ghi nhận vào ca';
+    document.getElementById('popup-msg').innerHTML =
+      'ID <strong>' + empId + '</strong>' + caStr + ' chưa ghi nhận vào ca hôm nay.<br>' +
+      'Vui lòng kiểm tra lại ID hoặc chấm vào ca trước.';
+    document.getElementById('popup-chua-vao').querySelector('.popup-header').style.background = '#fff4e5';
+    document.getElementById('popup-chua-vao').querySelector('.popup-header').style.borderColor = '#f0e0c8';
+    document.getElementById('popup-icon-el').textContent = '⚠️';
+    document.getElementById('popup-icon-el').style.background = '#f5a623';
+    document.getElementById('popup-btn-switch').style.display = '';
+  }
   document.getElementById('popup-chua-vao').classList.add('show');
 }
 
@@ -551,8 +684,18 @@ async function submitForm(){
   const timeNow   = pad(now.getHours())+':'+pad(now.getMinutes());
   const dateVN    = getTodayVN();
 
+  const caId    = selectedCa ? selectedCa.id    : '';
+  const caLabel = selectedCa ? selectedCa.label : '';
+  const caTime  = selectedCa ? selectedCa.time  : '';
+
   if(!name || !empId || !warehouse){
     showErr('Vui lòng điền đầy đủ: Họ tên, Mã NV và Kho làm việc.');
+    return;
+  }
+  if(!selectedCa){
+    showErr('Vui lòng chọn ca làm việc.');
+    document.getElementById('ca-selector').style.outline = '2px solid #e24b4a';
+    setTimeout(() => document.getElementById('ca-selector').style.outline = '', 2000);
     return;
   }
   if(!photoBase64){
@@ -574,13 +717,17 @@ async function submitForm(){
     return;
   }
 
-  // Nếu chấm RA ca → kiểm tra đã có VÀO ca chưa
+  // Nếu chấm RA ca → kiểm tra đã có VÀO ca chưa (đúng empId + đúng caId)
   if(selectedShift === 'ra'){
     setLoading(true, 'Đang kiểm tra dữ liệu vào ca...');
-    const daVao = await checkDaVaoCA(empId, dateVN);
+    const checkResult = await checkDaVaoCA(empId, dateVN, caId);
     setLoading(false);
-    if(!daVao){
-      showPopupChuaVao(empId);
+    if(checkResult === 'overlap'){
+      showPopupChuaVao(empId, caLabel, true);
+      return;
+    }
+    if(!checkResult){
+      showPopupChuaVao(empId, caLabel, false);
       return;
     }
   }
@@ -589,11 +736,12 @@ async function submitForm(){
 
   const payload = {
     name, empId, warehouse,
+    caId, caLabel, caTime,        // Ca làm việc
     shiftType : selectedShift,
     time      : timeNow,
     date      : dateVN,
-    photo     : photoBase64,          // base64 JPEG
-    photoName : empId + '_' + selectedShift + '_' + dateVN.replace(/\//g,'-') + '_' + timeNow.replace(':','') + '.jpg',
+    photo     : photoBase64,
+    photoName : empId + '_' + caId + '_' + selectedShift + '_' + dateVN.replace(/\//g,'-') + '_' + timeNow.replace(':','') + '.jpg',
     // Vị trí GPS
     gpsLat   : gpsData ? gpsData.lat      : '',
     gpsLng   : gpsData ? gpsData.lng      : '',
@@ -625,15 +773,16 @@ async function submitForm(){
     try { json = JSON.parse(xhr.responseText); }
     catch(e) {
       // Apps Script redirect (login page) → coi như ghi thành công (no-cors fallback)
-      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: null });
+      showSuccess({ name, empId, warehouse, caLabel, caTime, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: null });
       return;
     }
 
     if(json.status === 'ok'){
-      showSuccess({ name, empId, warehouse, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: json.driveLink });
+      showSuccess({ name, empId, warehouse, caLabel, caTime, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: json.driveLink });
+    } else if(json.code === 'OVERLAP'){
+      showPopupChuaVao(empId, caLabel, true);
     } else if(json.code === 'NO_CHECKIN'){
-      // Apps Script xác nhận không có vào ca → hiện popup (double-check an toàn)
-      showPopupChuaVao(empId);
+      showPopupChuaVao(empId, caLabel, false);
     } else {
       showErr((json.message || 'Lỗi không rõ nguyên nhân'));
     }
@@ -664,10 +813,11 @@ function showSuccess(p){
   document.getElementById('success-sub').textContent   = isVao ? 'Giờ vào & ảnh đã lưu vào Google Drive' : 'Giờ ra & ảnh đã lưu vào Google Drive';
 
   const rows = [
-    ['Ngày',   p.date],
-    ['Tên NV', p.name],
-    ['Mã NV',  p.empId],
-    ['Kho',    p.warehouse],
+    ['Ngày',        p.date],
+    ['Tên NV',      p.name],
+    ['Mã NV',       p.empId],
+    ['Kho',         p.warehouse],
+    ['Ca làm việc', (p.caLabel || '') + (p.caTime ? ' · ' + p.caTime : '')],
     [isVao ? 'Giờ vào' : 'Giờ ra', p.time],
   ];
   if(p.driveLink){
@@ -702,6 +852,12 @@ function resetForm(){
   selectedShift = 'vao';
   document.querySelectorAll('.shift-btn').forEach((b,i) => b.classList.toggle('active', i===0));
   document.getElementById('submit-btn').disabled = false;
+
+  // Reset ca làm việc
+  selectedCa = null;
+  document.getElementById('warehouse').value = '';
+  document.getElementById('ca-field').style.display = 'none';
+  document.getElementById('ca-selector').innerHTML = '<div class="ca-empty">Vui lòng chọn kho trước</div>';
 
   // Reset camera
   photoBase64 = null;
