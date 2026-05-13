@@ -410,7 +410,7 @@ updateTodayBadge(); setInterval(updateTodayBadge, 60000);
 
 /* ── APPS SCRIPT URL ── */
 // ⬇⬇⬇ DÁN URL APPS SCRIPT CỦA BẠN VÀO ĐÂY ⬇⬇⬇
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby1GC_K9xmRWz3YMFH-LaymYdteEys51lp79-xIRvty6rYOwVLFO6U6njuA7bNff89B/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwojN9fjAfrupbAtXuP6kiIJb6eidqKbEmH_N3CDCFZnaNYiya_8uZ6hO0MSb8HuXFn/exec';
 // ⬆⬆⬆ CHỈ SỬA DÒNG TRÊN, KHÔNG SỬA GÌ KHÁC ⬆⬆⬆
 
 /* ── SHIFT TOGGLE ── */
@@ -425,7 +425,7 @@ const _CA_BH  = [
   { id: 'ca2', label: 'Ca 2', time: '15:00 - 22:00', startH: 15, startM: 0,  endH: 22, endM: 0  },
 ];
 const _CA_2CA = [
-  { id: 'ca1', label: 'Ca 1', time: '6:30 - 15:30',  startH: 6,  startM: 30, endH: 15, endM: 30 },
+  { id: 'ca1', label: 'Ca 1', time: '7:00 - 16:00',  startH: 7,  startM: 0,  endH: 16, endM: 0  },
   { id: 'ca2', label: 'Ca 2', time: '13:00 - 22:00', startH: 13, startM: 0,  endH: 22, endM: 0  },
 ];
 
@@ -740,6 +740,8 @@ async function submitForm(){
   const payload = {
     name, empId, warehouse,
     caId, caLabel, caTime,        // Ca làm việc
+    caStart : selectedCa ? (selectedCa.startH * 60 + selectedCa.startM) : 0,
+    caEnd   : selectedCa ? (selectedCa.endH   * 60 + selectedCa.endM)   : 0,
     shiftType : selectedShift,
     time      : timeNow,
     date      : dateVN,
