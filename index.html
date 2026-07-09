@@ -413,9 +413,6 @@ updateTodayBadge(); setInterval(updateTodayBadge, 60000);
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwXiARPtcTfPz-ZdbPK4dkYIsOCygPSzKb2E_ak862TqhnfWuZeBSvZQdb1ERwc14-/exec';
 // ⬆⬆⬆ CHỈ SỬA DÒNG TRÊN, KHÔNG SỬA GÌ KHÁC ⬆⬆⬆
 
-/* ── SHIFT TOGGLE ── */
-/* ── DANH SÁCH CA LÀM VIỆC THEO KHO ── */
-// startH/startM: giờ bắt đầu, endH/endM: giờ kết thúc (dùng để check overlap)
 /* ── DANH SÁCH CA LÀM VIỆC THEO KHO ── */
 // startH/startM: giờ bắt đầu, endH/endM: giờ kết thúc
 // Dùng để render UI và check overlap khi chấm nhiều ca/ngày
@@ -443,7 +440,7 @@ const WAREHOUSE_SHIFTS = {
   'Kho GHN Bến Cát'    : _CA_2CA,
   'Kho GHN Thuận An'   : _CA_2CA,
   'Kho GHN Dĩ An'      : _CA_DIAN,
-  'Kho GHN Tây Ninh'   : _CA_2CA,
+  'Kho GHN Tây Ninh'   : _CA_2CA,   // 3 ca (khớp giờ chuẩn Ca 3 trong .gs)
 };
 
 let selectedCa = null; // { id, label, time, startH, startM, endH, endM }
@@ -611,8 +608,6 @@ async function checkDaVaoCA(empId, dateVN, warehouse, caLabel, isRaCa){
       date      : dateVN,
       warehouse,
       caLabel,
-      // Khi ra ca: KHÔNG gửi caStart/caEnd (= 0) → Apps Script check nhánh daVao
-      // Khi vào ca mới: gửi caStart/caEnd → Apps Script check overlap
       caStart   : isRaCa ? 0 : (selectedCa ? (selectedCa.startH * 60 + selectedCa.startM) : 0),
       caEnd     : isRaCa ? 0 : (selectedCa ? (selectedCa.overnight
                     ? (selectedCa.endH * 60 + selectedCa.endM + 1440)
@@ -671,7 +666,6 @@ function closePopup(){
 function switchToVaoCa(){
   const btnVao = document.querySelector('.shift-btn[data-val="vao"]');
   if(btnVao) selectShift(btnVao);
-  // Highlight ô ID để NV xác nhận lại
   const idInput = document.getElementById('emp-id');
   idInput.focus();
   idInput.style.borderColor = '#534AB7';
@@ -728,7 +722,7 @@ async function submitForm(){
     return;
   }
 
-  // Nếu chấm RA ca → kiểm tra đã có VÀO ca chưa (đúng empId + đúng caId)
+  // Nếu chấm RA ca → kiểm tra đã có VÀO ca chưa (đúng empId + đúng caLabel)
   if(selectedShift === 'ra'){
     setLoading(true, 'Đang kiểm tra dữ liệu vào ca...');
     const checkResult = await checkDaVaoCA(empId, dateVN, warehouse, caLabel, true);
@@ -757,7 +751,6 @@ async function submitForm(){
     date      : dateVN,
     photo     : photoBase64,
     photoName : empId + '_' + caId + '_' + selectedShift + '_' + dateVN.replace(/\//g,'-') + '_' + timeNow.replace(':','') + '.jpg',
-    // Vị trí GPS
     gpsLat   : gpsData ? gpsData.lat      : '',
     gpsLng   : gpsData ? gpsData.lng      : '',
     gpsAcc   : gpsData ? gpsData.accuracy : '',
@@ -766,7 +759,6 @@ async function submitForm(){
 
   try {
     // Dùng XMLHttpRequest với Content-Type: text/plain để tránh CORS preflight
-    // Apps Script đọc được JSON trong body dù content-type là text/plain
     const xhr = await new Promise((resolve) => {
       const x = new XMLHttpRequest();
       x.open('POST', APPS_SCRIPT_URL, true);
@@ -784,11 +776,19 @@ async function submitForm(){
       return;
     }
 
+    // [FIX] Response không hợp lệ → KHÔNG báo thành công giả.
+    // Trước đây parse lỗi = showSuccess luôn, khiến NV tưởng đã chấm
+    // dù dữ liệu chưa chắc ghi vào Sheet. Giờ báo lỗi để NV nộp lại.
+    if(xhr.status !== 200 || !xhr.responseText){
+      showErr('Máy chủ phản hồi không hợp lệ (mã ' + xhr.status + '). Vui lòng thử nộp lại.');
+      return;
+    }
+
     let json;
     try { json = JSON.parse(xhr.responseText); }
     catch(e) {
-      // Apps Script redirect (login page) → coi như ghi thành công (no-cors fallback)
-      showSuccess({ name, empId, warehouse, caLabel, caTime, shiftType: selectedShift, time: timeNow, date: dateVN, driveLink: null });
+      showErr('Không nhận được xác nhận từ máy chủ (có thể do phiên đăng nhập Apps Script hết hạn hoặc URL sai). ' +
+              'Ảnh có thể đã lưu nhưng CHƯA chắc ghi công — vui lòng kiểm tra hoặc nộp lại.');
       return;
     }
 
